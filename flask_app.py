@@ -62,7 +62,7 @@ WELCOME_PAGE = """
 <body>
   <div id="particles-js"></div>
   <h1>Welcome</h1>
-  <a href="{{ url_for('pong') }}"><button class="btn-pong">Ping Pong</button></a>
+  <button class="btn-pong" onclick="window.location.href='{{ url_for('pong') }}'">Ping Pong</button>
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
     particlesJS("particles-js", {
