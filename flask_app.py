@@ -14,12 +14,110 @@ if USER is None or PASS is None:
     raise RuntimeError("LOGIN_USER and LOGIN_PASS must be set in the .env file.")
 
 LOGIN_FORM = """
-<form method="post">
-  <input name="username" placeholder="Username" required>
-  <input name="password" type="password" placeholder="Password" required>
-  <button type="submit">Login</button>
-</form>
-{% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Prihlásenie</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #232526 0%, #414345 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .login-container {
+      background: rgba(30,30,30,0.97);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+      padding: 48px 36px 36px 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 340px;
+    }
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 18px;
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2em;
+      color: #232526;
+      font-weight: bold;
+      box-shadow: 0 2px 12px #0004;
+    }
+    .login-title {
+      color: #fff;
+      font-size: 2em;
+      margin-bottom: 18px;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    input[type="text"], input[type="password"] {
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1.1em;
+      background: #222;
+      color: #fff;
+      outline: none;
+      transition: box-shadow 0.2s;
+      box-shadow: 0 1px 4px #0002;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      box-shadow: 0 0 0 2px #4e54c8;
+    }
+    button[type="submit"] {
+      background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 0;
+      font-size: 1.2em;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 2px 8px #0003;
+    }
+    button[type="submit"]:hover {
+      background: linear-gradient(90deg, #232526 0%, #4e54c8 100%);
+      transform: translateY(-2px) scale(1.03);
+    }
+    .login-error {
+      color: #ff6b6b;
+      margin-top: 10px;
+      font-size: 1.05em;
+      text-align: center;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-logo">🎮</div>
+    <div class="login-title">Prihlásenie</div>
+    <form method="post">
+      <input name="username" type="text" placeholder="Používateľské meno" required autocomplete="username">
+      <input name="password" type="password" placeholder="Heslo" required autocomplete="current-password">
+      <button type="submit">Prihlásiť sa</button>
+    </form>
+    <div class="login-error">{% if error %}{{ error }}{% endif %}</div>
+  </div>
+</body>
+</html>
 """
 
 HELLO_SCREEN = """
@@ -195,14 +293,126 @@ POKER_PAGE = """
   <title>Poker</title>
   <style>
     body { background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0;}
+    .cards { margin: 10px 0; }
+    .card { display: inline-block; background: #fff; color: #111; border-radius: 6px; padding: 10px 16px; margin: 0 4px; font-size: 1.3em; min-width: 32px; text-align: center;}
+    .btn { margin: 10px 8px 0 8px; font-size: 1.1em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
+    .btn:hover { background: #444; color: #fff; }
     .back-btn { margin-top: 20px; font-size: 1.2em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
     .back-btn:hover { background: #444; color: #fff; }
+    .status { margin: 12px 0 0 0; font-size: 1.2em; min-height: 1.5em;}
   </style>
 </head>
 <body>
-  <h2>Poker (demo)</h2>
-  <p>Tu bude hra Poker.</p>
+  <h2>Poker (jednoduchá hra)</h2>
+  <div>
+    <div><b>Dealer:</b></div>
+    <div class="cards" id="dealer-cards"></div>
+  </div>
+  <div style="margin-top:20px;">
+    <div><b>Hráč:</b></div>
+    <div class="cards" id="player-cards"></div>
+  </div>
+  <div class="status" id="status"></div>
+  <div>
+    <button class="btn" id="deal-btn">Rozdať</button>
+    <button class="btn" id="restart-btn" style="display:none;">Reštart</button>
+  </div>
   <a href="{{ url_for('welcome') }}"><button class="back-btn">Späť</button></a>
+  <script>
+    const suits = ['♠','♥','♦','♣'];
+    const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+    let deck = [];
+    let playerCards = [];
+    let dealerCards = [];
+    let dealt = false;
+
+    function createDeck() {
+      let d = [];
+      for (let s of suits) {
+        for (let v of values) {
+          d.push({suit:s, value:v});
+        }
+      }
+      for (let i = d.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [d[i], d[j]] = [d[j], d[i]];
+      }
+      return d;
+    }
+
+    function renderCards(elemId, cards) {
+      const el = document.getElementById(elemId);
+      el.innerHTML = '';
+      cards.forEach((c) => {
+        el.innerHTML += `<span class="card">${c.value}${c.suit}</span>`;
+      });
+    }
+
+    function handRank(hand) {
+      // Vracia jednoduchý popis kombinácie (len pár, dvojpár, trojica, postupka, farba, full house, poker, straight flush, high card)
+      let vals = hand.map(c => values.indexOf(c.value)).sort((a,b)=>a-b);
+      let suitsArr = hand.map(c => c.suit);
+      let counts = {};
+      for (let v of vals) counts[v] = (counts[v]||0)+1;
+      let countVals = Object.values(counts).sort((a,b)=>b-a);
+      let isFlush = suitsArr.every(s=>s===suitsArr[0]);
+      let isStraight = vals.every((v,i,arr)=>i===0||v-arr[i-1]===1) || (JSON.stringify(vals)==JSON.stringify([0,1,2,3,12])); // A2345
+      if (isStraight && isFlush) return "Straight Flush";
+      if (countVals[0]===4) return "Poker";
+      if (countVals[0]===3 && countVals[1]===2) return "Full House";
+      if (isFlush) return "Flush";
+      if (isStraight) return "Straight";
+      if (countVals[0]===3) return "Trojica";
+      if (countVals[0]===2 && countVals[1]===2) return "Dvojpár";
+      if (countVals[0]===2) return "Pár";
+      return "Najvyššia karta";
+    }
+
+    function compareHands(player, dealer) {
+      // Jednoduché porovnanie podľa poradia kombinácií
+      const ranks = ["Najvyššia karta","Pár","Dvojpár","Trojica","Straight","Flush","Full House","Poker","Straight Flush"];
+      let pr = handRank(player), dr = handRank(dealer);
+      let pi = ranks.indexOf(pr), di = ranks.indexOf(dr);
+      if (pi > di) return "Vyhral hráč ("+pr+" > "+dr+")";
+      if (pi < di) return "Vyhral dealer ("+dr+" > "+pr+")";
+      // Ak rovnaká kombinácia, rozhoduje najvyššia karta
+      let pvals = player.map(c=>values.indexOf(c.value)).sort((a,b)=>b-a);
+      let dvals = dealer.map(c=>values.indexOf(c.value)).sort((a,b)=>b-a);
+      for (let i=0;i<5;i++) {
+        if (pvals[i]>dvals[i]) return "Vyhral hráč ("+pr+")";
+        if (pvals[i]<dvals[i]) return "Vyhral dealer ("+dr+")";
+      }
+      return "Remíza";
+    }
+
+    function deal() {
+      deck = createDeck();
+      playerCards = [deck.pop(),deck.pop(),deck.pop(),deck.pop(),deck.pop()];
+      dealerCards = [deck.pop(),deck.pop(),deck.pop(),deck.pop(),deck.pop()];
+      renderCards('player-cards', playerCards);
+      renderCards('dealer-cards', dealerCards);
+      let result = compareHands(playerCards, dealerCards);
+      document.getElementById('status').textContent = result;
+      document.getElementById('deal-btn').disabled = true;
+      document.getElementById('restart-btn').style.display = '';
+      dealt = true;
+    }
+
+    function restart() {
+      playerCards = [];
+      dealerCards = [];
+      renderCards('player-cards', []);
+      renderCards('dealer-cards', []);
+      document.getElementById('status').textContent = '';
+      document.getElementById('deal-btn').disabled = false;
+      document.getElementById('restart-btn').style.display = 'none';
+      dealt = false;
+    }
+
+    document.getElementById('deal-btn').onclick = deal;
+    document.getElementById('restart-btn').onclick = restart;
+    restart();
+  </script>
 </body>
 </html>
 """
@@ -231,7 +441,7 @@ BLACKJACK_PAGE = """
     <div id="dealer-score"></div>
   </div>
   <div style="margin-top:20px;">
-    <div><b>You:</b></div>
+    <div><b>Vy:</b></div>
     <div class="cards" id="player-cards"></div>
     <div id="player-score"></div>
   </div>
@@ -294,8 +504,8 @@ BLACKJACK_PAGE = """
     }
 
     function renderScores() {
-      document.getElementById('player-score').textContent = 'Score: ' + handValue(playerCards);
-      let dealerScore = gameOver ? handValue(dealerCards) : (dealerCards.length > 1 ? 'Score: ?' : '');
+      document.getElementById('player-score').textContent = 'Skóre: ' + handValue(playerCards);
+      let dealerScore = gameOver ? handValue(dealerCards) : (dealerCards.length > 1 ? 'Skóre: ?' : '');
       document.getElementById('dealer-score').textContent = dealerScore;
     }
 
@@ -311,7 +521,7 @@ BLACKJACK_PAGE = """
     function checkGameEnd() {
       let playerVal = handValue(playerCards);
       if (playerVal > 21) {
-        document.getElementById('status').textContent = 'Bust! You lose.';
+        document.getElementById('status').textContent = 'Prehrali ste! (BUST)';
         gameOver = true;
       } else if (playerVal === 21) {
         stand();
@@ -325,10 +535,10 @@ BLACKJACK_PAGE = """
       let dealerVal = handValue(dealerCards);
       let playerVal = handValue(playerCards);
       let status = '';
-      if (dealerVal > 21) status = 'Dealer busts! You win!';
-      else if (dealerVal > playerVal) status = 'Dealer wins!';
-      else if (dealerVal < playerVal) status = 'You win!';
-      else status = 'Push (tie)!';
+      if (dealerVal > 21) status = 'Dealer busts! Vyhrali ste!';
+      else if (dealerVal > playerVal) status = 'Dealer vyhráva!';
+      else if (dealerVal < playerVal) status = 'Vyhrali ste!';
+      else status = 'Remíza!';
       document.getElementById('status').textContent = status;
       gameOver = true;
       updateUI();
