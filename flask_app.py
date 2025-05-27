@@ -38,7 +38,7 @@ WELCOME_PAGE = """
     body { background: #111; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column;}
     h1 { font-size: 5em; z-index: 1; position: relative; margin-bottom: 40px;}
     #particles-js { position: fixed; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 0; }
-    .btn-pong {
+    .btn-pong, .btn-poker, .btn-blackjack {
       z-index: 1;
       font-size: 2em;
       padding: 20px 60px;
@@ -53,7 +53,7 @@ WELCOME_PAGE = """
       text-align: center;
       text-decoration: none;
     }
-    .btn-pong:hover {
+    .btn-pong:hover, .btn-poker:hover, .btn-blackjack:hover {
       background: #222;
       color: #fff;
     }
@@ -63,6 +63,8 @@ WELCOME_PAGE = """
   <div id="particles-js"></div>
   <h1>Welcome</h1>
   <button class="btn-pong" onclick="window.location.href='{{ url_for('pong') }}'">Ping Pong</button>
+  <button class="btn-poker" onclick="window.location.href='{{ url_for('poker') }}'">Poker</button>
+  <button class="btn-blackjack" onclick="window.location.href='{{ url_for('blackjack') }}'">Black Jack</button>
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
     particlesJS("particles-js", {
@@ -186,6 +188,44 @@ PONG_PAGE = """
 </html>
 """
 
+POKER_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Poker</title>
+  <style>
+    body { background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0;}
+    .back-btn { margin-top: 20px; font-size: 1.2em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
+    .back-btn:hover { background: #444; color: #fff; }
+  </style>
+</head>
+<body>
+  <h2>Poker (demo)</h2>
+  <p>Tu bude hra Poker.</p>
+  <a href="{{ url_for('welcome') }}"><button class="back-btn">Späť</button></a>
+</body>
+</html>
+"""
+
+BLACKJACK_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Black Jack</title>
+  <style>
+    body { background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0;}
+    .back-btn { margin-top: 20px; font-size: 1.2em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
+    .back-btn:hover { background: #444; color: #fff; }
+  </style>
+</head>
+<body>
+  <h2>Black Jack (demo)</h2>
+  <p>Tu bude hra Black Jack.</p>
+  <a href="{{ url_for('welcome') }}"><button class="back-btn">Späť</button></a>
+</body>
+</html>
+"""
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = None
@@ -219,6 +259,18 @@ def hello():
 def pong():
     if "user" in session:
         return render_template_string(PONG_PAGE)
+    return redirect(url_for("login"))
+
+@app.route("/poker")
+def poker():
+    if "user" in session:
+        return render_template_string(POKER_PAGE)
+    return redirect(url_for("login"))
+
+@app.route("/blackjack")
+def blackjack():
+    if "user" in session:
+        return render_template_string(BLACKJACK_PAGE)
     return redirect(url_for("login"))
 
 @app.route("/logout")
