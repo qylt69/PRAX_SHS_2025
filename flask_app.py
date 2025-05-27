@@ -214,14 +214,158 @@ BLACKJACK_PAGE = """
   <title>Black Jack</title>
   <style>
     body { background: #222; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0;}
+    .cards { margin: 10px 0; }
+    .card { display: inline-block; background: #fff; color: #111; border-radius: 6px; padding: 10px 16px; margin: 0 4px; font-size: 1.3em; min-width: 32px; text-align: center;}
+    .btn { margin: 10px 8px 0 8px; font-size: 1.1em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
+    .btn:hover { background: #444; color: #fff; }
     .back-btn { margin-top: 20px; font-size: 1.2em; padding: 10px 30px; border-radius: 8px; border: none; background: #fff; color: #111; cursor: pointer;}
     .back-btn:hover { background: #444; color: #fff; }
+    .status { margin: 12px 0 0 0; font-size: 1.2em; min-height: 1.5em;}
   </style>
 </head>
 <body>
-  <h2>Black Jack (demo)</h2>
-  <p>Tu bude hra Black Jack.</p>
+  <h2>Black Jack</h2>
+  <div>
+    <div><b>Dealer:</b></div>
+    <div class="cards" id="dealer-cards"></div>
+    <div id="dealer-score"></div>
+  </div>
+  <div style="margin-top:20px;">
+    <div><b>You:</b></div>
+    <div class="cards" id="player-cards"></div>
+    <div id="player-score"></div>
+  </div>
+  <div class="status" id="status"></div>
+  <div>
+    <button class="btn" id="hit-btn">Hit</button>
+    <button class="btn" id="stand-btn">Stand</button>
+    <button class="btn" id="restart-btn" style="display:none;">Restart</button>
+  </div>
   <a href="{{ url_for('welcome') }}"><button class="back-btn">Späť</button></a>
+  <script>
+    const suits = ['♠','♥','♦','♣'];
+    const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    let deck = [];
+    let playerCards = [];
+    let dealerCards = [];
+    let gameOver = false;
+
+    function createDeck() {
+      let d = [];
+      for (let s of suits) {
+        for (let v of values) {
+          d.push({suit:s, value:v});
+        }
+      }
+      for (let i = d.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [d[i], d[j]] = [d[j], d[i]];
+      }
+      return d;
+    }
+
+    function cardValue(card) {
+      if (card.value === 'A') return 11;
+      if (['K','Q','J'].includes(card.value)) return 10;
+      return parseInt(card.value);
+    }
+
+    function handValue(hand) {
+      let val = 0, aces = 0;
+      for (let c of hand) {
+        val += cardValue(c);
+        if (c.value === 'A') aces++;
+      }
+      while (val > 21 && aces > 0) {
+        val -= 10;
+        aces--;
+      }
+      return val;
+    }
+
+    function renderCards(elemId, cards, hideFirst=false) {
+      const el = document.getElementById(elemId);
+      el.innerHTML = '';
+      cards.forEach((c, i) => {
+        let cardHtml = hideFirst && i === 0 ? '<span class="card">?</span>' :
+          `<span class="card">${c.value}${c.suit}</span>`;
+        el.innerHTML += cardHtml;
+      });
+    }
+
+    function renderScores() {
+      document.getElementById('player-score').textContent = 'Score: ' + handValue(playerCards);
+      let dealerScore = gameOver ? handValue(dealerCards) : (dealerCards.length > 1 ? 'Score: ?' : '');
+      document.getElementById('dealer-score').textContent = dealerScore;
+    }
+
+    function updateUI() {
+      renderCards('player-cards', playerCards);
+      renderCards('dealer-cards', dealerCards, !gameOver);
+      renderScores();
+      document.getElementById('hit-btn').disabled = gameOver;
+      document.getElementById('stand-btn').disabled = gameOver;
+      document.getElementById('restart-btn').style.display = gameOver ? '' : 'none';
+    }
+
+    function checkGameEnd() {
+      let playerVal = handValue(playerCards);
+      if (playerVal > 21) {
+        document.getElementById('status').textContent = 'Bust! You lose.';
+        gameOver = true;
+      } else if (playerVal === 21) {
+        stand();
+      }
+    }
+
+    function dealerTurn() {
+      while (handValue(dealerCards) < 17) {
+        dealerCards.push(deck.pop());
+      }
+      let dealerVal = handValue(dealerCards);
+      let playerVal = handValue(playerCards);
+      let status = '';
+      if (dealerVal > 21) status = 'Dealer busts! You win!';
+      else if (dealerVal > playerVal) status = 'Dealer wins!';
+      else if (dealerVal < playerVal) status = 'You win!';
+      else status = 'Push (tie)!';
+      document.getElementById('status').textContent = status;
+      gameOver = true;
+      updateUI();
+    }
+
+    function hit() {
+      if (gameOver) return;
+      playerCards.push(deck.pop());
+      updateUI();
+      checkGameEnd();
+    }
+
+    function stand() {
+      if (gameOver) return;
+      gameOver = true;
+      updateUI();
+      setTimeout(() => {
+        dealerTurn();
+      }, 700);
+    }
+
+    function restart() {
+      deck = createDeck();
+      playerCards = [deck.pop(), deck.pop()];
+      dealerCards = [deck.pop(), deck.pop()];
+      gameOver = false;
+      document.getElementById('status').textContent = '';
+      updateUI();
+      checkGameEnd();
+    }
+
+    document.getElementById('hit-btn').onclick = hit;
+    document.getElementById('stand-btn').onclick = stand;
+    document.getElementById('restart-btn').onclick = restart;
+
+    restart();
+  </script>
 </body>
 </html>
 """
